@@ -52,10 +52,38 @@ int main( int argc,char *argv[] )
 
 	int total = 100;
 	vector<int> v2;
-	co_ref( ref,total,v2,m);
+
+	co_ref( ref,total,v2,m); // 把后面几个变量的内容集合在一起变成一个 ref 变量
+	/*
+	typedef decltype(total) typeof_total;
+	typedef decltype(v2) typeof_v2;
+	typedef decltype(m) typeof_m;
+	class type_ref {
+	public:
+		typeof_total &total;
+		typeof_v2 &v2;
+		typeof_m &m;
+		int _member_cnt;
+		type_ref(typeof_total &totalr, typeof_v2 &v2r, typeof_m &mr, ...) : total(totalr), v2(v2r), m(mr), _member_cnt(3) {}
+	} ref(total, v2, m);
+	*/
+
 	for(int i=0;i<10;i++)
 	{
 		co_func( f,ref,i )
+		/*
+		typedef decltype(ref) typeof_ref;
+		typedef decltype(i) typeof_i;
+		class f : public stCoClosure_t {
+		public:
+			typeof_ref ref;
+			typeof_i i;
+			int _member_cnt;
+
+		public:
+			f(typeof_ref &refr, typeof_i &ir, ...) : ref(refr), i(ir), _member_cnt(2) {}
+			void exec()
+		*/ // 说到底就是偷梁换柱，把上面的这些要用到的变量给它弄到对象的成员变量里面了。
 		{
 			printf("ref.total %d i %d\n",ref.total,i );
 			//lock
@@ -64,7 +92,7 @@ int main( int argc,char *argv[] )
 			pthread_mutex_unlock(&ref.m);
 			//unlock
 		}
-		co_func_end;
+		co_func_end; // 即 }
 		v.push_back( new f( ref,i ) );
 	}
 	for(int i=0;i<2;i++)
@@ -88,4 +116,24 @@ int main( int argc,char *argv[] )
 	return 0;
 }
 
+/*
+ref.total 100 i 2
+i: 1
+ref.total 100 i 1
+i: 0
+ref.total 100 i 0
+ref.total 100 i 3
+ref.total 100 i 4
+ref.total 100 i 5
+ref.total 100 i 8
+ref.total 100 i 7
+ref.total 100 i 6
+ref.total 100 i 9
+i 1 j 0
+i 0 j 0
+i 0 j 1
+i 1 j 1
+done
 
+十四个任务以不定顺序被完成，并且全部完成之后再到 done。
+*/
