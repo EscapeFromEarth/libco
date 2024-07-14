@@ -235,6 +235,7 @@ void inline PopHead( TLink*apLink )
 	}
 }
 
+// 把 apOther 连接到 apLink 末尾，两者都是双向链表
 template <class TNode,class TLink>
 void inline Join( TLink*apLink,TLink *apOther )
 {
@@ -835,6 +836,12 @@ void co_eventloop( stCoEpoll_t *ctx,pfn_co_eventloop_t pfn,void *arg )
 
 		Join<stTimeoutItem_t,stTimeoutItemLink_t>( active,timeout );
 
+		// 下面这里以循环的方式来处理确实很牛逼！
+		// 比如生产者要有动作了，这时候 epoll 醒了然后来到这里，然后生产者就
+		// 生产出一个任务，**并 cond_signal 了一下消费者**，此时消费者协程
+		// 就被加到 active 链表的末尾，也就是它会在本轮处理，包括消费者唤醒
+		// 的那些协程也是，也即整个闭包，老铁没毛病！
+		// 所以根本不用去监听这个 signal 的动作，就实现了很多相关的效果。
 		lp = active->head;
 		while( lp )
 		{
@@ -850,6 +857,8 @@ void co_eventloop( stCoEpoll_t *ctx,pfn_co_eventloop_t pfn,void *arg )
 					continue;
 				}
 			}
+			// 比如 cond 里面的 wait 就用到 psi->timeout.pfnProcess = OnSignalProcessEvent;
+			// 这里的 lp->pfnProcess(lp)，也就是 OnSignalProcessEvent(lp) 就是把 lp 切进来运行。
 			if( lp->pfnProcess )
 			{
 				lp->pfnProcess( lp );
