@@ -595,7 +595,7 @@ int poll(struct pollfd fds[], nfds_t nfds, int timeout)
 				fds_merge[nfds_merge] = fds[i];
 				m[fds[i].fd] = nfds_merge;
 				nfds_merge++;
-			} else {
+			} else { // 这里把多个监听同个 fd 的给合并起来
 				int j = it->second;
 				fds_merge[j].events |= fds[i].events;  // merge in j slot
 			}
@@ -613,7 +613,7 @@ int poll(struct pollfd fds[], nfds_t nfds, int timeout)
 				it = m.find(fds[i].fd);
 				if (it != m.end()) {
 					int j = it->second;
-					fds[i].revents = fds_merge[j].revents & fds[i].events;
+					fds[i].revents = fds_merge[j].revents & fds[i].events; // 这里把合并的给“分”到各个用户传过来的关心的 pollfd 上面
 				}
 			}
 		}
