@@ -116,7 +116,7 @@ static void *readwrite_routine( void *arg )
 			struct sockaddr_in addr;
 			SetAddr(endpoint->ip, endpoint->port, addr);
 			ret = connect(fd,(struct sockaddr*)&addr,sizeof(addr));
-						
+
 			if ( errno == EALREADY || errno == EINPROGRESS )
 			{       
 				struct pollfd pf = { 0 };
@@ -184,7 +184,7 @@ int main(int argc,char *argv[])
 	stEndPoint endpoint;
 	endpoint.ip = argv[1];
 	endpoint.port = atoi(argv[2]);
-	int cnt = atoi( argv[3] );
+	int cnt = atoi( argv[3] ); // 每个进程的协程数（每个进程一个线程）
 	int proccnt = atoi( argv[4] );
 	
 	struct sigaction sa;
