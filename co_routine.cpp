@@ -155,6 +155,8 @@ void RemoveFromLink(T *ap)
 	if(!lst) return ;
 	assert( lst->head && lst->tail );
 
+	// 这个处理一看就懂，就是在你知道你的节点的迭代器的情况下
+	// 去列表上删除这个节点的复杂度是 O(1) 的。
 	if( ap == lst->head )
 	{
 		lst->head = ap->pNext;
@@ -783,6 +785,8 @@ void OnPollPreparePfn( stTimeoutItem_t * ap,struct epoll_event &e,stTimeoutItemL
 	{
 		pPoll->iAllEventDetach = 1;
 
+		// 下面两步取消超时事件，同时唤醒 pPoll，注意 stPollItem_t 继承于 stTimeoutItem_t。
+		
 		RemoveFromLink<stTimeoutItem_t,stTimeoutItemLink_t>( pPoll );
 
 		AddTail( active,pPoll );
@@ -1008,6 +1012,21 @@ int co_poll_inner( stCoEpoll_t *ctx,struct pollfd fds[], nfds_t nfds, int timeou
 		co_yield_env( co_get_curr_thread_env() );
 		iRaiseCnt = arg.iRaiseCnt;
 	}
+
+	// 首先弄清楚，这个 poll 在目前看来主要就是用于设置等待超时的，比如等待一个 IO，
+	// 超时时间为 500ms，则 poll(&pf, 1, 500) 一次，如果 IO 成功则成功获取了内容，
+	// 如果失败了则不再管。做请求超时确实是很合适。
+	// 然后再想下它的 hook 实现：在定时器上注册一个事件，事件回调就是切回来当前协程；
+	// 在 epoll 上注册对应的 fd，然后回调函数就是一个 OnPollPreparePfn，回调函数会
+	// 给本次的 poll 的 iRaiseCnt++，当然同时设置好对应 fd 的 poll event，并且结束
+	// 本次 poll——具体是把这个超时事件删除、然后再把它加入到 active 协程队列中（其实
+	// 是一个带有函数的超时结构体队列，里面的函数就是要干的活，比如切入协程）；切回来
+	// 当前协程之后就开始下面的 epoll 事件删除和返回 raise cnt。
+	// 那么我个人实现肯定不会 hook 这么大一个东西，就直接仿上面说的这些主要逻辑，封装
+	// 成一个小函数就行。
+	// poll 多个感觉不是很有必要会用到，只要你有 closure 的方法：多个协程，每个协程
+	// 里面是用 MyRead 去 IO 的，也完全没问题。
+	// 完美！（吧，应该）
 
     {
 		//clear epoll status and memory
