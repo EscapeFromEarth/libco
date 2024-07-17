@@ -341,6 +341,10 @@ ssize_t read( int fd, void *buf, size_t nbyte )
 	}
 	rpchook_t *lp = get_by_fd( fd );
 
+	// 这种情况是考虑到即使 hook 了，但是用户还是自己设置了要求非阻塞，
+	// 那我就要按他的需求来弄，做到完全 hook。
+	// 我自己实现的时候可以不用 hook，叫做 MyRead 就行，确实会侵入业务
+	// 但是不管，反正我也还没业务 hhh。
 	if( !lp || ( O_NONBLOCK & lp->user_flag ) ) 
 	{
 		ssize_t ret = g_sys_read_func( fd,buf,nbyte );
